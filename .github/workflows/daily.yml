@@ -13,28 +13,37 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-      
+        uses: actions/checkout@v4
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11.8'
 
-      - name: Install Chrome (official stable) and Chromedriver (auto-match)
+      - name: Install latest Google Chrome and matching ChromeDriver
         run: |
+          sudo apt-get remove -y chromium-browser chromium-chromedriver || true
           sudo apt-get update
           sudo apt-get install -y wget unzip xvfb
-          # 下载最新稳定版 Chrome
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+
+          # 下载并安装最新版 Google Chrome
+          wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./google-chrome-stable_current_amd64.deb
-          google-chrome --version
-          # 自动下载与 Chrome 匹配的 chromedriver
-          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.')
-          CHROME_VERSION=${CHROME_VERSION%%.*}
-          echo "Detected Chrome major version: $CHROME_VERSION"
-          wget -q "https://storage.googleapis.com/chrome-for-testing-public/$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')/linux64/chromedriver-linux64.zip" -O chromedriver.zip || true
-          unzip -o chromedriver.zip -d /usr/local/bin/ || true
-          chmod +x /usr/local/bin/chromedriver || true
+
+          # 获取 Chrome 版本号
+          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+          CHROME_MAJOR=$(echo $CHROME_VERSION | cut -d'.' -f1)
+          echo "✅ Installed Chrome version: $CHROME_VERSION"
+
+          # 自动下载匹配版本 chromedriver
+          DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip"
+          echo "Downloading Chromedriver from: $DRIVER_URL"
+          wget -q "$DRIVER_URL" -O chromedriver.zip || (echo "⚠️ Failed to download driver, fallback to latest stable"; wget -q https://storage.googleapis.com/chrome-for-testing-public/${CHROME_MAJOR}/linux64/chromedriver-linux64.zip -O chromedriver.zip)
+          unzip -o chromedriver.zip -d /usr/local/bin/
+          sudo mv /usr/local/bin/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
+
+          echo "✅ ChromeDriver version:"
           chromedriver --version
 
       - name: Install Python dependencies
