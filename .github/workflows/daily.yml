@@ -2,10 +2,9 @@ name: NodeSeek 自动签到评论加鸡腿
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   schedule:
-    - cron: '00 16 * * *'  # UTC 16:00，对应北京时间 00:00
+    - cron: '00 16 * * *'  # UTC 16:00，北京时间 00:00
 
 jobs:
   run-nodeseek-daily:
@@ -13,44 +12,28 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v3
+      
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: '3.11.8'
 
-      - name: Install latest Google Chrome and matching ChromeDriver
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Setup ChromeDriver
+        uses: SeleniumBase/setup-chromedriver@v1
+
+      - name: Verify versions
         run: |
-          sudo apt-get remove -y chromium-browser chromium-chromedriver || true
-          sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb
-
-          # 下载并安装最新版 Google Chrome
-          wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt install -y ./google-chrome-stable_current_amd64.deb
-
-          # 获取 Chrome 版本号
-          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
-          CHROME_MAJOR=$(echo $CHROME_VERSION | cut -d'.' -f1)
-          echo "✅ Installed Chrome version: $CHROME_VERSION"
-
-          # 自动下载匹配版本 chromedriver
-          DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip"
-          echo "Downloading Chromedriver from: $DRIVER_URL"
-          wget -q "$DRIVER_URL" -O chromedriver.zip || (echo "⚠️ Failed to download driver, fallback to latest stable"; wget -q https://storage.googleapis.com/chrome-for-testing-public/${CHROME_MAJOR}/linux64/chromedriver-linux64.zip -O chromedriver.zip)
-          unzip -o chromedriver.zip -d /usr/local/bin/
-          sudo mv /usr/local/bin/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
-          sudo chmod +x /usr/local/bin/chromedriver
-
-          echo "✅ ChromeDriver version:"
+          google-chrome --version
           chromedriver --version
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install curl_cffi selenium undetected-chromedriver python-dotenv requests
 
       - name: Run NodeSeek script
         env:
